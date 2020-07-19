@@ -19,9 +19,6 @@ let ballSpeedY = -5;
 const racketHeight = 100;
 const racketWidth = 20;
 
-let playerPosY = height/2;
-let aiPosY = height/2;
-
 let mousePosY = 0;
 let collision = false;
 
@@ -30,12 +27,17 @@ let ballDownBorder = ballPosY + ballSize/2;
 let ballLeftBorder = ballPosX - ballSize/2;
 let ballRightBorder = ballPosX + ballSize/2;
 
+let playerPosY = height/2;
 let playerUpBorder = playerPosY - racketHeight/2;
 let playerDownBorder = playerPosY + racketHeight/2;
 let playerLeftBorder = 70;
 let playerRightBorder = 70 + racketWidth;
+
+let aiPosY = height/2;
 let aiLeftBorder = 930 - racketWidth;
 let aiRightBorder = 930;
+let aiUpBorder = aiPosY - racketHeight/2;
+let aiDownBorder = aiPosY + racketHeight/2;
 
 let lastError = 0; 
 let iError = 0; 
@@ -61,32 +63,38 @@ function updateBall()
 
     collisionDetection();
     
-    /*
     if(collision)
     {
-        if(ballSpeedX < 10.0) 
+        if(Math.abs(ballSpeedX) < 10.0) 
         {
-            if(ballPosX <= 0)
+            if(ballSpeedX <= 0)
                 ballSpeedX -= 0.1;
-            else if(ballPosX + ballSize >= width)
+            else if(ballSpeedX > 0)
                 ballSpeedX += 0.1;
         }
-        if(ballSpeedY < 10.0) 
+        if(Math.abs(ballSpeedY) < 10.0) 
         {
-            if(ballPosY <= 0)
+            if(ballSpeedY <= 0)
                 ballSpeedY -= 0.1;
-            else if (ballPosY + ballSize >= height)
+            else if (ballSpeedY > 0)
                 ballSpeedY += 0.1;
         }
         collision = false;
     }
-    */
 }
 
 function collisionDetection()
 {
     borderCollision();
-    racketCollision();
+
+    playerUpBorder = playerPosY - racketHeight/2;
+    playerDownBorder = playerPosY + racketHeight/2;
+
+    aiUpBorder = aiPosY - racketHeight/2;
+    aiDownBorder = aiPosY + racketHeight/2;
+
+    racketCollision(playerUpBorder, playerRightBorder, playerDownBorder, playerLeftBorder);
+    racketCollision(aiUpBorder, aiRightBorder, aiDownBorder, aiLeftBorder);
 }
 
 function borderCollision()
@@ -111,22 +119,19 @@ function AABBintersects(differenceValues)
     return true;
 }
 
-function racketCollision()
+function racketCollision(racketUp, racketRight, racketDown, racketLeft)
 {
     ballUpBorder = ballPosY - ballSize/2;
     ballDownBorder = ballPosY + ballSize/2;
     ballLeftBorder = ballPosX - ballSize/2;
     ballRightBorder = ballPosX + ballSize/2;
 
-    playerUpBorder = playerPosY - racketHeight/2;
-    playerDownBorder = playerPosY + racketHeight/2;
-
     let depthCollision = 0.0;
 
-    let differenceValues = [playerUpBorder - ballDownBorder,    //playerUpBallDown
-                            ballUpBorder - playerDownBorder,    //playerDownBallUp
-                            ballLeftBorder - playerRightBorder, //playerRightBallLeft
-                            playerLeftBorder - ballRightBorder] //playerLeftBallRight
+    let differenceValues = [racketUp - ballDownBorder,    //playerUpBallDown
+                            ballUpBorder - racketDown,    //playerDownBallUp
+                            ballLeftBorder - racketRight, //playerRightBallLeft
+                            racketLeft - ballRightBorder] //playerLeftBallRight
 
     if(AABBintersects(differenceValues)) 
     {
@@ -136,6 +141,8 @@ function racketCollision()
 
         if(depthCollision == differenceValues[0] || depthCollision == differenceValues[1]) ballSpeedY = -ballSpeedY;
         else if(depthCollision == differenceValues[2] || depthCollision == differenceValues[3]) ballSpeedX = -ballSpeedX;
+
+        collision = true;
     }
 }
 
