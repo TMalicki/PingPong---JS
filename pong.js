@@ -11,8 +11,8 @@ canvas.width = width;
 const ballSize = 20;
 let ballPosX = width/2;
 let ballPosY = height/2;
-let ballSpeedX = -5;
-let ballSpeedY = -5;
+let ballSpeedX = -3;
+let ballSpeedY = -3;
 
 const racketHeight = 100;
 const racketWidth = 20;
@@ -76,6 +76,11 @@ function updateBall()
     ballPosX += ballSpeedX;
     ballPosY += ballSpeedY;
 
+    ballUpBorder = ballPosY - ballSize/2;
+    ballDownBorder = ballPosY + ballSize/2;
+    ballLeftBorder = ballPosX - ballSize/2;
+    ballRightBorder = ballPosX + ballSize/2;
+
     collisionDetection();
     speedUp(); 
 }
@@ -112,8 +117,8 @@ function collisionDetection()
     aiUpBorder = aiPosY - racketHeight/2;
     aiDownBorder = aiPosY + racketHeight/2;
 
-    racketCollision(playerUpBorder, playerRightBorder, playerDownBorder, playerLeftBorder);
-    racketCollision(aiUpBorder, aiRightBorder, aiDownBorder, aiLeftBorder);
+    minowskiCollision(aiUpBorder, aiRightBorder, aiDownBorder, aiLeftBorder);
+    minowskiCollision(playerUpBorder, playerRightBorder, playerDownBorder, playerLeftBorder);
 }
 
 function borderCollision()
@@ -142,71 +147,57 @@ function borderCollision()
     }   
 }
 
-function AABBintersects(differenceValues)
-{
-    if(differenceValues[2] > 0.0 || differenceValues[1] > 0.0) return false;
-    if(differenceValues[0] > 0.0 || differenceValues[3] > 0.0) return false;
 
-    return true;
+function minowskiCollision(racketUp, racketRight, racketDown, racketLeft)
+{
+    let leftMD = racketLeft - ballRightBorder;
+    let topMD = racketUp - ballDownBorder;
+    let widthMD = racketWidth + ballSize;
+    let heightMD = racketHeight + ballSize;
+
+    let mdMinX = leftMD;
+    let mdMaxX = leftMD + widthMD;
+    let mdMinY = topMD;
+    let mdMaxY = topMD + heightMD;
+
+    if(mdMinX <= 0 && mdMaxX >= 0 && mdMinY <= 0 && mdMaxY >= 0) 
+    {
+        let depthXY = depthOfCollision(0, 0, mdMinX, mdMaxX, mdMinY, mdMaxY);
+
+        if(Math.abs(depthXY[0]) >= Math.abs(depthXY[1])) 
+        {
+            ballPosX += depthXY[0];
+            ballSpeedX = -ballSpeedX;
+        }
+        else 
+        {
+            ballPosY += depthXY[1];
+            ballSpeedY = -ballSpeedY;
+        }
+    }
 }
 
-function racketCollision(racketUp, racketRight, racketDown, racketLeft)
+function depthOfCollision(PointX, PointY, minX, maxX, minY, maxY)
 {
-    ballUpBorder = ballPosY - ballSize/2;
-    ballDownBorder = ballPosY + ballSize/2;
-    ballLeftBorder = ballPosX - ballSize/2;
-    ballRightBorder = ballPosX + ballSize/2;
+    let minDist = Math.abs(PointX - minX);
+    let depthXY = [minX, PointY];
 
-    let depthCollision = 0.0;
-
-    let differenceValues = [racketUp - ballDownBorder,    //playerUpBallDown
-                            ballUpBorder - racketDown,    //playerDownBallUp
-                            ballLeftBorder - racketRight, //playerRightBallLeft
-                            racketLeft - ballRightBorder] //playerLeftBallRight
-
-    if(AABBintersects(differenceValues)) 
+    if(Math.abs(maxX - PointX) < minDist)
     {
-        //differenceValues.sort(function(a, b){return a-b});
-
-        let calculatedDepth = Math.max.apply(null,differenceValues);
-
-        if(depthCollision >= calculatedDepth) depthCollision = calculatedDepth;
-
-        if(depthCollision == differenceValues[0] || depthCollision == differenceValues[1]) 
-        {    
-          //  debugger;
-            ballSpeedY = -ballSpeedY;
-            if(Math.abs(depthCollision) > Math.abs(ballSpeedY)) 
-            {
-                if(ballSpeedY >= 0)
-                {
-                    ballPosY += Math.abs(depthCollision);
-                }
-                else
-                {
-                    ballPosY -= Math.abs(depthCollision);
-                }
-            } 
-        }
-        else if(depthCollision == differenceValues[2] || depthCollision == differenceValues[3]) 
-        {  
-          //  debugger;
-            ballSpeedX = -ballSpeedX;
-            if(Math.abs(depthCollision) > Math.abs(ballSpeedX)) 
-            {
-                if(ballSpeedX >= 0)
-                {
-                    ballPosX += Math.abs(depthCollision);
-                }
-                else
-                {
-                    ballPosX -= Math.abs(depthCollision);
-                }
-            } 
-        }
-        console.log(depthCollision);
-        collision = true;
+        minDist = Math.abs(maxX - PointX);
+        depthXY = [maxX, PointY];
     }
+    if(Math.abs(maxY - PointY) < minDist)
+    {
+        minDist = Math.abs(maxY - PointY);
+        depthXY = [PointX, maxY];
+    }
+    if(Math.abs(minY - PointY) < minDist)
+    {
+        minDist = Math.abs(minY - PointY);
+        depthXY = [PointX, minY];
+    }
+    return depthXY;
 }
 
 function drawBall()
@@ -232,7 +223,6 @@ function updatePlayer(e)
     mousePosY = e.clientY - canvas.offsetTop;
     playerPosY = mousePosY;
 
-    
     if(playerPosY - racketHeight/2 < 0) playerPosY = racketHeight/2; 
     else if(playerPosY + racketHeight/2 > height) playerPosY = height - racketHeight/2;
 }
@@ -257,7 +247,6 @@ function aiPID(kp, Ti, Kd)
     dError = (pError - lastError) / (1000 * 60);
 
     fullError += kp * pError + (1/Ti) * (iError) - Kd * dError;
-    console.log(fullError);
     if(fullError >= 5.0) fullError = 5.0;
     else if(fullError <= -5.0) fullError = -5.0;
     aiPosY += fullError;
@@ -271,7 +260,6 @@ function game()
 {
     if(newStart == false)
     {
-        console.log("-----------------------------------------------");
         boardDraw(width, height);
         updateBall();
         updateAI();
@@ -298,7 +286,7 @@ function initializeGame()
 
     ballSpeedX = -(Math.random() + 5); // -5 / -6
     ballSpeedY = (Math.random() * 11 - 5);   
-    console.log(ballSpeedY);
+    ///console.log(ballSpeedY);
     newStart = false;
 }
 
