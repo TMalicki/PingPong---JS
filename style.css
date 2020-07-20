@@ -8,10 +8,41 @@ body
 
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
 }
 
 canvas
 {
     border: solid 5px white;
+}
+#player span
+{
+
+}
+#points
+{
+    margin-top: 20px;
+    margin-bottom: -100px;
+    width: 1000px;
+    padding: 0;
+    display: flex;
+    align-items: flex-start;
+    align-content: flex-start;
+}
+
+#player
+{
+    width: 448px;
+    font-size: 48px;
+    padding-top: 25px;
+    padding-left: 50px;
+}
+
+#ai
+{
+    width: 448px;
+    font-size: 48px;
+    padding-top: 25px;
+    padding-left: 50px;
 }

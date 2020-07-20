@@ -1,5 +1,3 @@
-// should use continuous collision detection (not discrete)
-
 var canvas = document.querySelector("canvas");
 var ctx = canvas.getContext("2d");
 
@@ -22,29 +20,46 @@ const racketWidth = 20;
 let mousePosY = 0;
 let collision = false;
 
+//for collisionDetection
 let ballUpBorder = ballPosY - ballSize/2;
 let ballDownBorder = ballPosY + ballSize/2;
 let ballLeftBorder = ballPosX - ballSize/2;
 let ballRightBorder = ballPosX + ballSize/2;
 
+//for Player's collisionDetection and steering
 let playerPosY = height/2;
 let playerUpBorder = playerPosY - racketHeight/2;
 let playerDownBorder = playerPosY + racketHeight/2;
 let playerLeftBorder = 70;
 let playerRightBorder = 70 + racketWidth;
 
+//for AI collisionDetection and steering
 let aiPosY = height/2;
 let aiLeftBorder = 930 - racketWidth;
 let aiRightBorder = 930;
 let aiUpBorder = aiPosY - racketHeight/2;
 let aiDownBorder = aiPosY + racketHeight/2;
 
+//for continuous collisionDetection;
+let prevPlayerPos = [70+racketWidth/2, playerPosY];
+let prevAIPos = [930 - racketWidth/2, aiPosY];
+let prevBallPos = [ballPosX, ballPosY];
+
+let velocityPlayer;
+let velocityBall;
+let velocityAI;
+
+let newStart = false;
+let pointAI = 0;
+let pointPlayer = 0;
+
+//for AI's PID 
 let lastError = 0; 
 let iError = 0; 
 let dError = 0; 
 let pError = 0;
 
-function setup(width, height)
+function boardDraw(width, height)
 {
     ctx.fillStyle = 'black';
     ctx.fillRect(0,0,width, height);
@@ -62,7 +77,11 @@ function updateBall()
     ballPosY += ballSpeedY;
 
     collisionDetection();
-    
+    speedUp(); 
+}
+
+function speedUp()
+{
     if(collision)
     {
         if(Math.abs(ballSpeedX) < 10.0) 
@@ -108,6 +127,18 @@ function borderCollision()
     {
         ballSpeedX = -ballSpeedX;
         collision = true;
+        newStart = true;
+        if(ballPosX + ballSize/2 >= width) 
+        {
+            pointPlayer++;
+            var pointTab = document.querySelector("#player span").textContent = pointPlayer;
+        }
+        else 
+        {
+            pointAI++;
+            var pointTab = document.querySelector("#ai span").textContent = pointAI;
+        }
+        reset();
     }   
 }
 
@@ -135,13 +166,45 @@ function racketCollision(racketUp, racketRight, racketDown, racketLeft)
 
     if(AABBintersects(differenceValues)) 
     {
+        //differenceValues.sort(function(a, b){return a-b});
+
         let calculatedDepth = Math.max.apply(null,differenceValues);
 
         if(depthCollision >= calculatedDepth) depthCollision = calculatedDepth;
 
-        if(depthCollision == differenceValues[0] || depthCollision == differenceValues[1]) ballSpeedY = -ballSpeedY;
-        else if(depthCollision == differenceValues[2] || depthCollision == differenceValues[3]) ballSpeedX = -ballSpeedX;
-
+        if(depthCollision == differenceValues[0] || depthCollision == differenceValues[1]) 
+        {    
+          //  debugger;
+            ballSpeedY = -ballSpeedY;
+            if(Math.abs(depthCollision) > Math.abs(ballSpeedY)) 
+            {
+                if(ballSpeedY >= 0)
+                {
+                    ballPosY += Math.abs(depthCollision);
+                }
+                else
+                {
+                    ballPosY -= Math.abs(depthCollision);
+                }
+            } 
+        }
+        else if(depthCollision == differenceValues[2] || depthCollision == differenceValues[3]) 
+        {  
+          //  debugger;
+            ballSpeedX = -ballSpeedX;
+            if(Math.abs(depthCollision) > Math.abs(ballSpeedX)) 
+            {
+                if(ballSpeedX >= 0)
+                {
+                    ballPosX += Math.abs(depthCollision);
+                }
+                else
+                {
+                    ballPosX -= Math.abs(depthCollision);
+                }
+            } 
+        }
+        console.log(depthCollision);
         collision = true;
     }
 }
@@ -168,6 +231,7 @@ function updatePlayer(e)
 {
     mousePosY = e.clientY - canvas.offsetTop;
     playerPosY = mousePosY;
+
     
     if(playerPosY - racketHeight/2 < 0) playerPosY = racketHeight/2; 
     else if(playerPosY + racketHeight/2 > height) playerPosY = height - racketHeight/2;
@@ -187,29 +251,66 @@ function updateAI()
 
 function aiPID(kp, Ti, Kd)
 {
-    debugger;
+    let fullError = 0.0;
     pError = (ballPosY - aiPosY);
     iError += pError * 1000/60;
     dError = (pError - lastError) / (1000 * 60);
 
-    aiPosY += kp * pError + (1/Ti) * (iError) - Kd * dError;
+    fullError += kp * pError + (1/Ti) * (iError) - Kd * dError;
+    console.log(fullError);
+    if(fullError >= 5.0) fullError = 5.0;
+    else if(fullError <= -5.0) fullError = -5.0;
+    aiPosY += fullError;
 
     if(aiPosY - racketHeight/2 < 0) aiPosY = racketHeight/2; 
     else if(aiPosY + racketHeight/2 > height) aiPosY = height - racketHeight/2;
     lastError = pError;
-    debugger;
 }
 
 function game()
 {
-    setup(width, height);
-    updateBall();
-    updateAI();
-    drawPlayer();
-    drawAI(); 
-    drawBall();
+    if(newStart == false)
+    {
+        console.log("-----------------------------------------------");
+        boardDraw(width, height);
+        updateBall();
+        updateAI();
+
+        velocityPlayer = [70 + racketWidth/2, Math.abs(playerPosY - prevPlayerPos[1])];
+        velocityAI = [930 - racketWidth/2, Math.abs(aiPosY - prevAIPos[1])];
+        velocityBall = [ballPosX - prevBallPos[0], ballPosY - prevBallPos[1]];
+
+        //console.log(velocityPlayer[1]);
+        drawPlayer();
+        drawAI(); 
+        drawBall();
+
+        prevPlayerPos = [70 + racketWidth/2, playerPosY];
+        prevBallPos = [ballPosX, ballPosY];
+        prevAIPos = [930 - racketWidth/2, aiPosY];
+    }
+}
+
+function initializeGame()
+{
+    ballPosX = width/2;
+    ballPosY = Math.random()*height; 
+
+    ballSpeedX = -(Math.random() + 5); // -5 / -6
+    ballSpeedY = (Math.random() * 11 - 5);   
+    console.log(ballSpeedY);
+    newStart = false;
+}
+
+function reset()
+{
+if(newStart == true)
+{
+    setTimeout(function() {initializeGame()}, 1000);
+}
 }
 
 canvas.addEventListener("mousemove", function(e){ updatePlayer(e) }, false);
+
 
 window.setInterval(game, 1000/60);
