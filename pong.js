@@ -1,6 +1,11 @@
+// better ai - scalable
+// optimization of code
+// better collision detection
+
 var canvas = document.querySelector("canvas");
 var ctx = canvas.getContext("2d");
 
+/////for gameBoard
 const height = 500;
 const width = 1000;
 const fieldLineWidth = 2;
@@ -8,56 +13,57 @@ const fieldLineHeight = 20;
 canvas.height = height;
 canvas.width = width;
 
+/////for ball
 const ballSize = 20;
 let ballPosX = width/2;
 let ballPosY = height/2;
-let ballSpeedX = -3;
-let ballSpeedY = -3;
-
-const racketHeight = 100;
-const racketWidth = 20;
-
-let mousePosY = 0;
-let collision = false;
-
+let ballSpeedX = -5;
+let ballSpeedY = -5;
 //for collisionDetection
 let ballUpBorder = ballPosY - ballSize/2;
 let ballDownBorder = ballPosY + ballSize/2;
 let ballLeftBorder = ballPosX - ballSize/2;
 let ballRightBorder = ballPosX + ballSize/2;
 
-//for Player's collisionDetection and steering
+/////for rackets
+const racketHeight = 100;
+const racketWidth = 20;
+
+/////for Player's collisionDetection and steering
 let playerPosY = height/2;
 let playerUpBorder = playerPosY - racketHeight/2;
 let playerDownBorder = playerPosY + racketHeight/2;
 let playerLeftBorder = 70;
 let playerRightBorder = 70 + racketWidth;
 
-//for AI collisionDetection and steering
+/////for AI collisionDetection and steering
 let aiPosY = height/2;
 let aiLeftBorder = 930 - racketWidth;
 let aiRightBorder = 930;
 let aiUpBorder = aiPosY - racketHeight/2;
 let aiDownBorder = aiPosY + racketHeight/2;
 
-//for continuous collisionDetection;
-let prevPlayerPos = [70+racketWidth/2, playerPosY];
-let prevAIPos = [930 - racketWidth/2, aiPosY];
-let prevBallPos = [ballPosX, ballPosY];
-
-let velocityPlayer;
-let velocityBall;
-let velocityAI;
-
-let newStart = false;
-let pointAI = 0;
-let pointPlayer = 0;
-
-//for AI's PID 
+/////for AI's PID 
 let lastError = 0; 
 let iError = 0; 
 let dError = 0; 
 let pError = 0;
+
+///// additional variables
+let mousePosY = 0;
+let collision = false;
+let newStart = false;
+let pointAI = 0;
+let pointPlayer = 0;
+
+//for continuous collisionDetection;
+let prevPlayerPos = [70+racketWidth/2, playerPosY];
+let prevAIPos = [930 - racketWidth/2, aiPosY];
+let prevBallPos = [ballPosX, ballPosY];
+let velocityPlayer;
+let velocityBall;
+let velocityAI;
+
 
 function boardDraw(width, height)
 {
@@ -89,21 +95,23 @@ function speedUp()
 {
     if(collision)
     {
-        if(Math.abs(ballSpeedX) < 10.0) 
+      //  debugger;
+        if(Math.abs(ballSpeedX) < 15.0) 
         {
             if(ballSpeedX <= 0)
-                ballSpeedX -= 0.1;
+                ballSpeedX -= 0.5;
             else if(ballSpeedX > 0)
-                ballSpeedX += 0.1;
+                ballSpeedX += 0.5;
         }
-        if(Math.abs(ballSpeedY) < 10.0) 
+        if(Math.abs(ballSpeedY) < 15.0) 
         {
             if(ballSpeedY <= 0)
-                ballSpeedY -= 0.1;
+                ballSpeedY -= 0.5;
             else if (ballSpeedY > 0)
-                ballSpeedY += 0.1;
+                ballSpeedY += 0.5;
         }
         collision = false;
+        console.log(ballSpeedX + " " + ballSpeedY);
     }
 }
 
@@ -168,13 +176,22 @@ function minowskiCollision(racketUp, racketRight, racketDown, racketLeft)
         {
             ballPosX += depthXY[0];
             ballSpeedX = -ballSpeedX;
+            reboundAngle(racketUp);
         }
         else 
         {
             ballPosY += depthXY[1];
             ballSpeedY = -ballSpeedY;
         }
+        collision = true;
     }
+}
+
+function reboundAngle(racketUp)
+{
+    let angleY = Math.PI/4 * (Math.abs(racketUp - ballPosY) / racketHeight) - Math.PI/8;
+    let speed = Math.sqrt(Math.pow(ballSpeedX,2) + Math.pow(ballSpeedY,2));
+    ballSpeedY = Math.sin(angleY) * speed;
 }
 
 function depthOfCollision(PointX, PointY, minX, maxX, minY, maxY)
@@ -235,7 +252,7 @@ function updateAI()
     }
     else
     {
-        aiPID(0.1, 10000, 1000)//2000, 1000
+        aiPID(0.2, 70000, 1500)//2000, 1000
     }
 }
 
