@@ -60,9 +60,9 @@ let pointPlayer = 0;
 let prevPlayerPos = [70+racketWidth/2, playerPosY];
 let prevAIPos = [930 - racketWidth/2, aiPosY];
 let prevBallPos = [ballPosX, ballPosY];
-let velocityPlayer;
-let velocityBall;
-let velocityAI;
+let velocityPlayer = [0, 0];
+let velocityBall  = [0, 0];
+let velocityAI = [0, 0];
 
 
 function boardDraw(width, height)
@@ -168,7 +168,7 @@ function minowskiCollision(racketUp, racketRight, racketDown, racketLeft)
     let mdMinY = topMD;
     let mdMaxY = topMD + heightMD;
 
-    if(mdMinX <= 0 && mdMaxX >= 0 && mdMinY <= 0 && mdMaxY >= 0) 
+    if(mdMinX <= 0 && mdMaxX >= 0 && mdMinY <= 0 && mdMaxY >= 0) // continuous time
     {
         let depthXY = depthOfCollision(0, 0, mdMinX, mdMaxX, mdMinY, mdMaxY);
 
@@ -185,6 +185,73 @@ function minowskiCollision(racketUp, racketRight, racketDown, racketLeft)
         }
         collision = true;
     }
+    ///// not workig corectly
+    else // continuous time
+    {
+        let relativeMotionX = velocityPlayer[0] - velocityBall[0];
+        let relativeMotionY = velocityPlayer[1] - velocityBall[1];
+
+        // ray-cast the relativeMotion vector against the Minkowski AABB
+        let h = getRayIntersection(mdMinX, mdMaxX, mdMinY, mdMaxY, relativeMotionX, relativeMotionY);
+
+        if(h < Number.POSITIVE_INFINITY)
+        {
+            console.log("ULTIMATE COLLISION-----------------");
+
+            playerPosY += velocityPlayer[1] * h;
+            ballPosX += velocityBall[0] * h;
+            ballPosY += velocityBall[1] * h;
+        }
+    }
+}
+
+function getRayIntersection(mdMinX, mdMaxX, mdMinY, mdMaxY, relativeMotionX, relativeMotionY)
+{
+    let endPos = [0 + relativeMotionX, 0 + relativeMotionY];
+
+    // for each of the AABB's four edges
+    // calculate the minimum fraction of "direction"
+    // in order to find where the ray FIRST intersects
+    // the AABB (if it ever does)
+
+    let minT = getRayIntersectionOfFirstRay(endPos, mdMinX, mdMinY, mdMinX, mdMaxY);
+    let x;
+    x = getRayIntersectionOfFirstRay(endPos, mdMinX, mdMaxY, mdMaxX, mdMaxY);
+    if(x < minT) minT = x;
+    x = getRayIntersectionOfFirstRay(endPos, mdMaxX, mdMaxY, mdMaxX, mdMinY);
+    if(x < minT) minT = x;
+    x = getRayIntersectionOfFirstRay(endPos, mdMaxX, mdMinY, mdMinX, mdMinY);
+    if(x < minT) minT = x;
+
+    return minT;
+}
+
+function getRayIntersectionOfFirstRay(endPos, originBX, originBY, endBX, endBY)
+{
+    let r = [endPos[0] - 0, endPos[1] - 0];
+    let s = [endBX - originBX, endBY - originBY];
+    
+    let numerator = ((originBX - 0) * r[0]) + ((originBY - 0) * r[1]);
+    let denominator = r[0]*s[0] + r[1]*s[1];
+
+    if(numerator == 0 && denominator == 0)
+    {
+        return Number.POSITIVE_INFINITY;
+    }
+    if(denominator == 0)
+    {
+        return Number.POSITIVE_INFINITY;
+    }
+
+    let u = numerator/denominator;
+    let t = ((originBX * s[0]) + (originBY * s[1])) / denominator;
+
+    if((t >= 0) && (t <= 1) && (u >= 0) && (u <= 1))
+    {
+        return t;
+    } 
+
+    return Number.POSITIVE_INFINITY;
 }
 
 function reboundAngle(racketUp)
@@ -281,8 +348,8 @@ function game()
         updateBall();
         updateAI();
 
-        velocityPlayer = [70 + racketWidth/2, Math.abs(playerPosY - prevPlayerPos[1])];
-        velocityAI = [930 - racketWidth/2, Math.abs(aiPosY - prevAIPos[1])];
+        velocityPlayer = [70 + racketWidth/2, (playerPosY - prevPlayerPos[1])];
+        velocityAI = [930 - racketWidth/2, (aiPosY - prevAIPos[1])];
         velocityBall = [ballPosX - prevBallPos[0], ballPosY - prevBallPos[1]];
 
         //console.log(velocityPlayer[1]);
@@ -309,13 +376,12 @@ function initializeGame()
 
 function reset()
 {
-if(newStart == true)
-{
-    setTimeout(function() {initializeGame()}, 1000);
-}
+    if(newStart == true)
+    {
+        setTimeout(function() {initializeGame()}, 1000);
+    }
 }
 
 canvas.addEventListener("mousemove", function(e){ updatePlayer(e) }, false);
-
 
 window.setInterval(game, 1000/60);
